@@ -10,7 +10,7 @@ import (
 
 func TestSyscalls(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=^helperSignalHandler$")
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // OWN IT'S OWN PID SO WE CAN SEND SIGTERM'S TO IT INSTEAD OF THE TEST FUNC.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // Set process group ID so the subprocess has its own PID; this allows us to send SIGTERM signals to it instead of the test function.
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Error starting sub-process: %v", err)
 	}
