@@ -2,7 +2,6 @@ package core
 
 import (
 	"hash/crc32"
-	"log"
 )
 
 func Getsum(log_without_checksum string) uint32 {
@@ -16,7 +15,8 @@ func Getsum(log_without_checksum string) uint32 {
 	 https://dx.doi.org/10.1109/26.231911
 	source: https://pkg.go.dev/hash/crc32#example-MakeTable */
 	checksum := crc32.Checksum([]byte(log_without_checksum), checksumoflog)
-	log.Printf("Checksum of %s : %08x\n", log_without_checksum, checksum)
+	// not needed log.printf since logs will be reviewed from main.go
+	// log.Printf("Checksum of %s : %08x\n", log_without_checksum, checksum)
 	return checksum
 
 }
