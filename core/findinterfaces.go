@@ -2,23 +2,31 @@ package core
 
 import (
 	"log"
-	"os/exec"
-	"strings"
+	"net"
 )
 
 func FindInterfaces() ([]string, error) {
-	cmd := exec.Command("sh", "-c", "ls /sys/class/net | grep -v lo")
-	// sys/class/net haves all the interfaces as a folder."grep -v --invert-match  select non-matching lines"(From grep --help output)
-	interfacenames, err := cmd.Output()
+	interfaces, err := net.Interfaces()
 	if err != nil {
 		log.Println("Can't find interfaces", err)
 		return nil, err
 	}
-	return ParseInterfaces(interfacenames), nil
+	return FilterInterfaces(interfaces)
 
 }
-func ParseInterfaces(data []byte) []string {
-	cleanlines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	return cleanlines
 
+// For now,we are removing down interfaces and loopback interfaces .In future,we may add a function to automaticly attach XDP when a down interface is up.
+func FilterInterfaces(interfaces []net.Interface) ([]string, error) {
+	var availableinterfaces []string
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		availableinterfaces = append(availableinterfaces, iface.Name)
+	}
+	log.Printf("info: detected interfaces: %s", availableinterfaces)
+	return availableinterfaces, nil
 }
