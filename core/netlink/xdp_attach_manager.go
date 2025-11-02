@@ -17,13 +17,13 @@ var (
 
 // Attachmanager function is the API between single purpose functions and main.go.
 // It attaches the XDP program to all the interfaces but loopback and down interfaces,this logic is implemented in findinterfaces.go
-// Returns the Active map link for potantial future use(monitoring active interfaces,cleanup etc.)
-func Attachmanager(objs *ebpf_export.IpsObjects) (map[int]link.Link, error) {
+// Returns the Active map link for potential future use(monitoring active interfaces,cleanup etc.)
+func AttachManager(objs *ebpf_export.IpsObjects) (map[int]link.Link, error) {
 	interfaces, err := FindInterfaces()
 	if err != nil {
 		return nil, fmt.Errorf("warning: cannot find interfaces from host : %w", err)
 	}
-	ActiveLinks, err := Attach(interfaces, objs)
+	ActiveLinks, err = Attach(interfaces, objs)
 	if err != nil {
 		return nil, fmt.Errorf("warning: cannot attach interfaces to host : %w", err)
 	}
