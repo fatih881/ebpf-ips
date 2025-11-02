@@ -3,7 +3,7 @@ package tests
 import (
 	"os"
 
-	"github.com/showbgpsummary/telemetry-ebpf/core"
+	"github.com/fatih881/ebpf-ips/core"
 )
 
 // ONLY USED BY syscallNotify_receivesignal_test.go TO HAVE ANOTHER PID.

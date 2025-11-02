@@ -4,8 +4,8 @@ import (
 	"net"
 	"testing"
 
-	localebpf "github.com/showbgpsummary/ebpf-ips/core/ebpf"
-	localnl "github.com/showbgpsummary/ebpf-ips/core/netlink"
+	localebpf "github.com/fatih881/ebpf-ips/core/ebpf"
+	localnl "github.com/fatih881/ebpf-ips/core/netlink"
 	"github.com/vishvananda/netlink"
 )
 

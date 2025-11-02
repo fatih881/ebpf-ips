@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	main "github.com/showbgpsummary/telemetry-ebpf/core"
+	main "github.com/fatih881/ebpf-ips/core"
 )
 
 func TestValidInput(t *testing.T) {

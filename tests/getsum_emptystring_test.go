@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	main "github.com/showbgpsummary/telemetry-ebpf/core"
+	main "github.com/fatih881/ebpf-ips/core"
 )
 
 func TestEmptystring(t *testing.T) {

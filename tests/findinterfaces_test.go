@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/showbgpsummary/telemetry-ebpf/core"
+	"github.com/fatih881/ebpf-ips/core"
 )
 
 func TestFilterInterfaces(t *testing.T) {
