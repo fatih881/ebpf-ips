@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fatih881/ebpf-ips/core"
+	"github.com/fatih881/ebpf-ips/core/netlink"
 )
 
 func TestFilterInterfaces(t *testing.T) {
@@ -49,7 +49,7 @@ func TestFilterInterfaces(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualOutput, err := core.FilterInterfaces(tc.inputInterfaces)
+			actualOutput, err := netlink.FilterInterfaces(tc.inputInterfaces)
 			if err != nil {
 				t.Fatalf("warning: filterinterfaces returned error : %v", err)
 			}
