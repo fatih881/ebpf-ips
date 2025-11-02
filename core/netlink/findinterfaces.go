@@ -17,7 +17,7 @@ func FindInterfaces() ([]string, error) {
 
 // For now,we are removing down interfaces and loopback interfaces.In future,we may add a function to automatically attach XDP when a down interface is up.
 func FilterInterfaces(interfaces []net.Interface) ([]string, error) {
-	var availableinterfaces []string
+	availableinterfaces := []string{}
 	for _, iface := range interfaces {
 		if iface.Flags&net.FlagLoopback != 0 {
 			continue
