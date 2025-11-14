@@ -9,94 +9,76 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func AttachTypeManager(iface string, linkObj netlink.Link, objs *ebpfExport.IpsObjects) (NewLink, error) {
+func AttachTypeManager(kernelindex int, linkObj netlink.Link, objs *ebpfExport.IpsObjects) (NewLink, error) {
 	var err error
 	var Result NewLink
 	switch linkObj.(type) {
 	case *netlink.Device:
-		Result, err = AttachPhysicalDevice(iface, linkObj, objs, WriteChan)
+		Result, err = AttachPhysicalDevice(kernelindex, linkObj, objs)
 		if err != nil {
 			log.Printf("warning: cannot attach physical device: %v", err)
 			return Result, err
 		}
 	case *netlink.Veth, *netlink.Bridge, *netlink.Vlan, *netlink.Dummy:
-		Result, err = AttachVirtualDevice(iface, linkObj, objs, WriteChan)
+		Result, err = AttachVirtualDevice(kernelindex, linkObj, objs)
 		if err != nil {
 			log.Printf("warning: cannot attach virtual device: %v", err)
 			return Result, err
 		}
 	default:
-		log.Printf("warning: cannot get device type for %s", linkObj.Attrs().Name)
-		return Result, fmt.Errorf("cannot get device type for %s : %v", linkObj.Attrs().Name, err)
+		return Result, fmt.Errorf("cannot get device type for %s", linkObj.Attrs().Name)
 	}
 	return Result, nil
 
 }
+func AttachPhysicalDevice(kernelindex int, linkObj netlink.Link, objs *ebpfExport.IpsObjects) (NewLink, error) {
 
-// AttachPhysicalDevice and AttachVirtualDevice both returns and sends the same values.
-// return have the purpose of making checks event-drivenly on main attach manager,and WriteChan is for logging purposes.
-func AttachPhysicalDevice(iface string, linkObj netlink.Link, objs *ebpfExport.IpsObjects, WriteChan chan NewLink) (NewLink, error) {
-
-	result, err := Attach(iface, link.XDPOffloadMode, objs)
+	result, err := Attach(kernelindex, link.XDPOffloadMode, objs)
 	if err == nil {
-		attachReply := NewLink{ // AttachReply will be replaced a wrapper because it's hard to make a refactor on attachReply right now.
+		replyinfo := NewLink{
 			LinkIndex:  linkObj.Attrs().Index,
 			Flag:       link.XDPOffloadMode,
 			LinkObject: result,
 		}
-		WriteChan <- attachReply
-		return attachReply, nil
+		return replyinfo, nil
 	} else {
-		result, err = Attach(iface, link.XDPDriverMode, objs)
+		result, err = Attach(kernelindex, link.XDPDriverMode, objs)
 	}
 	if err == nil {
-		attachReply := NewLink{
+		replyinfo := NewLink{
 			LinkIndex:  linkObj.Attrs().Index,
 			Flag:       link.XDPDriverMode,
 			LinkObject: result,
 		}
-		WriteChan <- attachReply
-		return attachReply, nil
+		return replyinfo, nil
 	} else {
-		result, err = Attach(iface, link.XDPGenericMode, objs)
+		result, err = Attach(kernelindex, link.XDPGenericMode, objs)
 	}
 	if err == nil {
-		attachReply := NewLink{
+		replyinfo := NewLink{
 			LinkIndex:  linkObj.Attrs().Index,
 			Flag:       link.XDPGenericMode,
 			LinkObject: result,
 		}
-		WriteChan <- attachReply
-		return attachReply, nil
+		return replyinfo, nil
 	} else {
-		log.Printf("warning: cannot load XDP to %s : %v", iface, err)
+		log.Printf("warning: cannot load XDP to %v : %v", kernelindex, err)
 	}
-	attachReply := NewLink{
-		LinkIndex:  linkObj.Attrs().Index,
-		Flag:       0,
-		LinkObject: result,
-	}
-	return attachReply, fmt.Errorf("cannot load XDP to %s : %v", iface, err)
+	return NewLink{}, fmt.Errorf("cannot load XDP to %v : %v", kernelindex, err)
 }
-func AttachVirtualDevice(iface string, linkObj netlink.Link, objs *ebpfExport.IpsObjects, WriteChan chan NewLink) (NewLink, error) {
-	result, err := Attach(iface, link.XDPGenericMode, objs)
+func AttachVirtualDevice(kernelindex int, linkObj netlink.Link, objs *ebpfExport.IpsObjects) (NewLink, error) {
+	result, err := Attach(kernelindex, link.XDPGenericMode, objs)
 	if err == nil {
-		log.Printf("info: generic mode is attached to %s", iface)
-		attachReply := NewLink{
+		log.Printf("info: generic mode is attached to %v", kernelindex)
+		replyinfo := NewLink{
 			LinkIndex:  linkObj.Attrs().Index,
 			Flag:       link.XDPGenericMode,
 			LinkObject: result,
 		}
-		WriteChan <- attachReply
-		return attachReply, nil
+		return replyinfo, nil
 	} else {
-		log.Printf("warning: cannot load XDP to %s : %v", iface, err)
+		log.Printf("warning: cannot load XDP to %v : %v", kernelindex, err)
 
 	}
-	attachReply := NewLink{
-		LinkIndex:  linkObj.Attrs().Index,
-		Flag:       0,
-		LinkObject: result,
-	}
-	return attachReply, fmt.Errorf("cannot load XDP to %s : %v", iface, err)
+	return NewLink{}, fmt.Errorf("cannot load XDP to %v : %v", kernelindex, err)
 }
