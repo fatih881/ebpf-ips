@@ -10,10 +10,41 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+// WriteChan ReadChan StopChan must be called and attached before StartLinkManager.
+var WriteChan chan struct {
+	NewLink NewLink
+	Err     error
+}
+var ReadChan chan chan map[int]link.Link
+var StopChan chan struct{}
+
 type NewLink struct {
 	Flag       link.XDPAttachFlags
 	LinkIndex  int
 	LinkObject link.Link
+}
+
+// StartLinkManager must be started before AttachManager function.
+func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Link, stopChan chan struct{}) {
+	var (
+		// activeLinks is a map where the key is the interface index (ID) and the value is the XDP link object.
+		activeLinks = make(map[int]link.Link)
+	)
+	for {
+		select {
+		case newLink := <-writeChan:
+			activeLinks[newLink.LinkIndex] = newLink.LinkObject
+		case req := <-readChan:
+			copyactiveLinks := make(map[int]link.Link, len(activeLinks))
+			for k, v := range activeLinks {
+				copyactiveLinks[k] = v
+			}
+			req <- copyactiveLinks
+
+		case <-stopChan:
+			return
+		}
+	}
 }
 
 // AttachManager :
