@@ -25,5 +25,4 @@ func attachReply(index int, flags link.XDPAttachFlags, LinkObject link.Link, rec
 		}{NewLink: NewLink{LinkIndex: index},
 			Err: receivederr}
 	}
-	return
 }

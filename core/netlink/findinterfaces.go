@@ -1,22 +1,21 @@
 package netlink
 
 import (
-	"log"
 	"net"
+
+	"go.uber.org/zap"
 )
 
-func FindInterfaces() ([]string, error) {
+func FindInterfaces(logger *zap.Logger) ([]string, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		log.Println("Can't find interfaces", err)
+		logger.Error("failed to get interfaces", zap.Error(err))
 		return nil, err
 	}
-	return FilterInterfaces(interfaces)
+	return FilterInterfaces(interfaces, logger)
 
 }
-
-// For now,we are removing down interfaces and loopback interfaces.In future,we may add a function to automatically attach XDP when a down interface is up.
-func FilterInterfaces(interfaces []net.Interface) ([]string, error) {
+func FilterInterfaces(interfaces []net.Interface, logger *zap.Logger) ([]string, error) {
 	availableinterfaces := []string{}
 	for _, iface := range interfaces {
 		if iface.Flags&net.FlagLoopback != 0 {
@@ -27,6 +26,6 @@ func FilterInterfaces(interfaces []net.Interface) ([]string, error) {
 		}
 		availableinterfaces = append(availableinterfaces, iface.Name)
 	}
-	log.Printf("info: detected interfaces: %s", availableinterfaces)
+	logger.Info("available interfaces", zap.Strings("interfaces", availableinterfaces))
 	return availableinterfaces, nil
 }
