@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/fatih881/ebpf-ips/core/netlink"
+	"go.uber.org/zap"
 )
 
 func TestFilterInterfaces(t *testing.T) {
@@ -49,7 +50,8 @@ func TestFilterInterfaces(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualOutput, err := netlink.FilterInterfaces(tc.inputInterfaces)
+			logger := zap.NewNop()
+			actualOutput, err := netlink.FilterInterfaces(tc.inputInterfaces, logger)
 			if err != nil {
 				t.Fatalf("warning: filterinterfaces returned error : %v", err)
 			}
