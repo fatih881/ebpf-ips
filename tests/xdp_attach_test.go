@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"net"
 	"testing"
 
 	"github.com/cilium/ebpf/link"
@@ -40,7 +41,12 @@ func TestAttach(t *testing.T) {
 			t.Logf("failed to remove objects : %v", err)
 		}
 	})
-	attachresult, err := localnl.Attach(dummyLinkName, link.XDPGenericMode, objs)
+	info, err := net.InterfaceByName(dummyLinkName)
+	if err != nil {
+		t.Fatalf("cannot get interface index : %v", err)
+	}
+	kernelindex := info.Index
+	attachresult, err := localnl.Attach(kernelindex, link.XDPGenericMode, objs)
 	if err != nil {
 		t.Fatalf("function cannot attach program : %v", err)
 	}
