@@ -1,13 +1,12 @@
 package netlink
 
 import (
-	"fmt"
-	"log"
 	"net"
 
 	"github.com/cilium/ebpf/link"
 	ebpfExport "github.com/fatih881/ebpf-ips/core/ebpf"
 	"github.com/vishvananda/netlink"
+	"go.uber.org/zap"
 )
 
 // WriteChan ReadChan StopChan must be called and attached before StartLinkManager.
@@ -50,31 +49,47 @@ func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Li
 // AttachManager :
 // AttachManager function is the API between single purpose functions and main.go.
 // It attaches the XDP program to all the interfaces but loopback and down interfaces,this logic is implemented in findinterfaces.go
-func AttachManager(objs *ebpfExport.IpsObjects) error {
-	interfaces, err := FindInterfaces()
+func AttachManager(objs *ebpfExport.IpsObjects, logger *zap.Logger) error {
+	interfaces, err := FindInterfaces(logger)
 	if err != nil {
-		return fmt.Errorf("fatal: cannot find interfaces from host : %v", err)
+		return err
 	}
+	var successCount, failCount int
 	for _, ifacename := range interfaces {
 		iface, err := net.InterfaceByName(ifacename)
 		if err != nil {
-			log.Printf("Error getting interface %s from host : %v", ifacename, err)
+			logger.Debug("interface lookup failed",
+				zap.Error(err))
+			failCount++
 			continue
 		}
 		kernelindex := iface.Index
 		linkObj, err := netlink.LinkByName(ifacename)
 		if err != nil {
-			log.Printf("warning: cannot fetch attr from %s : %v", ifacename, err)
+			logger.Debug("netlink fetch failed",
+				zap.String("ifaceName", iface.Name),
+				zap.Int("kernelIndex", kernelindex),
+				zap.Error(err))
 			attachReply(kernelindex, 0, nil, err)
+			failCount++
 			continue
 		}
-		attachinfo, err := AttachTypeManager(kernelindex, linkObj, objs)
+		attachinfo, err := AttachTypeManager(kernelindex, linkObj, objs, logger)
 		if err != nil {
-			log.Printf("warning: cannot attach type %s to %s : %v", ifacename, linkObj.Attrs().Name, err)
+			logger.Warn("attach failed",
+				zap.String("ifaceName", iface.Name),
+				zap.Int("kernelIndex", kernelindex),
+				zap.Error(err))
 			attachReply(kernelindex, 0, nil, err)
+			failCount++
 			continue
 		}
 		attachReply(kernelindex, attachinfo.Flag, attachinfo.LinkObject, nil)
+		successCount++
 	}
+	logger.Info("Attach Manager loop completed",
+		zap.Int("success", successCount),
+		zap.Int("fail", failCount),
+		zap.Int("total", len(interfaces)))
 	return nil
 }
