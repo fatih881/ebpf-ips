@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 
+	"github.com/cilium/ebpf/link"
+	"github.com/fatih881/ebpf-ips/core/netlink"
 	"go.uber.org/zap"
 )
 
@@ -20,4 +22,8 @@ func main() {
 			log.Fatalf("Can't stop logger: %v", err)
 		}
 	}(logger)
+	WriteChan := make(chan netlink.NewLink)
+	ReadChan := make(chan chan map[int]link.Link)
+	StopChan := make(chan struct{})
+	netlink.StartLinkManager(WriteChan, ReadChan, StopChan)
 }
