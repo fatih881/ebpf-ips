@@ -3,30 +3,47 @@ package netlink
 import (
 	"fmt"
 	"log"
+	"net"
 
 	"github.com/cilium/ebpf/link"
-	ebpf_export "github.com/fatih881/ebpf-ips/core/ebpf"
+	ebpfExport "github.com/fatih881/ebpf-ips/core/ebpf"
+	"github.com/vishvananda/netlink"
 )
 
-// XDPLinks is a list of all XDP link objects.
-// ActiveLinks is a map where the key is the interface index (ID) and the value is the XDP link object.
-var (
-	XDPLinks    = make([]link.Link, 0)
-	ActiveLinks = make(map[int]link.Link)
-)
+type NewLink struct {
+	Flag       link.XDPAttachFlags
+	LinkIndex  int
+	LinkObject link.Link
+}
 
-// Attachmanager function is the API between single purpose functions and main.go.
+// AttachManager :
+// AttachManager function is the API between single purpose functions and main.go.
 // It attaches the XDP program to all the interfaces but loopback and down interfaces,this logic is implemented in findinterfaces.go
-// Returns the Active map link for potential future use(monitoring active interfaces,cleanup etc.)
-func AttachManager(objs *ebpf_export.IpsObjects) (map[int]link.Link, error) {
+func AttachManager(objs *ebpfExport.IpsObjects) error {
 	interfaces, err := FindInterfaces()
 	if err != nil {
-		return nil, fmt.Errorf("warning: cannot find interfaces from host : %w", err)
+		return fmt.Errorf("fatal: cannot find interfaces from host : %v", err)
 	}
-	ActiveLinks, err = Attach(interfaces, objs)
-	if err != nil {
-		return nil, fmt.Errorf("warning: cannot attach interfaces to host : %w", err)
+	for _, ifacename := range interfaces {
+		iface, err := net.InterfaceByName(ifacename)
+		if err != nil {
+			log.Printf("Error getting interface %s from host : %v", ifacename, err)
+			continue
+		}
+		kernelindex := iface.Index
+		linkObj, err := netlink.LinkByName(ifacename)
+		if err != nil {
+			log.Printf("warning: cannot fetch attr from %s : %v", ifacename, err)
+			attachReply(kernelindex, 0, nil, err)
+			continue
+		}
+		attachinfo, err := AttachTypeManager(kernelindex, linkObj, objs)
+		if err != nil {
+			log.Printf("warning: cannot attach type %s to %s : %v", ifacename, linkObj.Attrs().Name, err)
+			attachReply(kernelindex, 0, nil, err)
+			continue
+		}
+		attachReply(kernelindex, attachinfo.Flag, attachinfo.LinkObject, nil)
 	}
-	log.Printf("info: successfully attached XDP to %d interfaces ", len(ActiveLinks))
-	return ActiveLinks, nil
+	return nil
 }
