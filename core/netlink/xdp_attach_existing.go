@@ -5,8 +5,20 @@ import (
 
 	"github.com/cilium/ebpf/link"
 	ebpfExport "github.com/fatih881/ebpf-ips/core/ebpf"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
+)
+
+var (
+	attachSuccessTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "xdp_attach_success_total",
+	})
+
+	attachFailTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "xdp_attach_failed_total",
+	})
 )
 
 // WriteChan ReadChan StopChan must be called and attached before StartLinkManager.
@@ -46,22 +58,18 @@ func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Li
 	}
 }
 
-// AttachExistingInterfaces :
-// AttachExistingInterfaces attaches XDP to all available interfaces on the system at startup.
-// After this function,we will handle new links event-drivenly with kernel subscribing.
-// It attaches the XDP program to all the interfaces but loopback and down interfaces,this logic is implemented in findinterfaces.go
+// AttachExistingInterfaces attaches XDP program to all existing interfaces on the system at startup.
 func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) error {
 	interfaces, err := FindInterfaces(logger)
 	if err != nil {
 		return err
 	}
-	var successCount, failCount int
 	for _, ifacename := range interfaces {
 		iface, err := net.InterfaceByName(ifacename)
 		if err != nil {
 			logger.Debug("interface lookup failed",
 				zap.Error(err))
-			failCount++
+			attachFailTotal.Inc()
 			continue
 		}
 		kernelindex := iface.Index
@@ -72,7 +80,7 @@ func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) e
 				zap.Int("kernelIndex", kernelindex),
 				zap.Error(err))
 			attachReply(kernelindex, 0, nil, err)
-			failCount++
+			attachFailTotal.Inc()
 			continue
 		}
 		attachinfo, err := AttachTypeManager(kernelindex, linkObj, objs, logger)
@@ -82,15 +90,12 @@ func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) e
 				zap.Int("kernelIndex", kernelindex),
 				zap.Error(err))
 			attachReply(kernelindex, 0, nil, err)
-			failCount++
+			attachFailTotal.Inc()
 			continue
 		}
 		attachReply(kernelindex, attachinfo.Flag, attachinfo.LinkObject, nil)
-		successCount++
+		attachSuccessTotal.Inc()
 	}
-	logger.Info("Attach Manager loop completed",
-		zap.Int("success", successCount),
-		zap.Int("fail", failCount),
-		zap.Int("total", len(interfaces)))
+	logger.Info("attach snapshot completed")
 	return nil
 }
