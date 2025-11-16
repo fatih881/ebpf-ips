@@ -23,7 +23,7 @@ type NewLink struct {
 	LinkObject link.Link
 }
 
-// StartLinkManager must be started before AttachManager function.
+// StartLinkManager must be started before AttachExistingInterfaces function.
 func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Link, stopChan chan struct{}) {
 	var (
 		// activeLinks is a map where the key is the interface index (ID) and the value is the XDP link object.
@@ -46,10 +46,11 @@ func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Li
 	}
 }
 
-// AttachManager :
-// AttachManager function is the API between single purpose functions and main.go.
+// AttachExistingInterfaces :
+// AttachExistingInterfaces attaches XDP to all available interfaces on the system at startup.
+// After this function,we will handle new links event-drivenly with kernel subscribing.
 // It attaches the XDP program to all the interfaces but loopback and down interfaces,this logic is implemented in findinterfaces.go
-func AttachManager(objs *ebpfExport.IpsObjects, logger *zap.Logger) error {
+func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) error {
 	interfaces, err := FindInterfaces(logger)
 	if err != nil {
 		return err
