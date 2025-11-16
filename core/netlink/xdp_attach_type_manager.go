@@ -23,7 +23,7 @@ func AttachTypeManager(kernelindex int, linkObj netlink.Link, objs *ebpfExport.I
 			return Result, err
 		}
 	case *netlink.Veth, *netlink.Bridge, *netlink.Vlan, *netlink.Dummy:
-		Result, err = AttachVirtualDevice(kernelindex, linkObj, objs)
+		Result, err = AttachVirtualDevice(kernelindex, linkObj, objs, logger)
 		if err != nil {
 			logger.Warn("attach failed",
 				zap.Int("kernelIndex", kernelindex),
@@ -73,7 +73,14 @@ func AttachPhysicalDevice(kernelindex int, linkObj netlink.Link, objs *ebpfExpor
 	}
 	return NewLink{}, err
 }
-func AttachVirtualDevice(kernelindex int, linkObj netlink.Link, objs *ebpfExport.IpsObjects) (NewLink, error) {
+func AttachVirtualDevice(kernelindex int, linkObj netlink.Link, objs *ebpfExport.IpsObjects, logger *zap.Logger) (NewLink, error) {
+	masterindex := linkObj.Attrs().MasterIndex
+	if masterindex != 0 {
+		logger.Debug("iface is attached to master",
+			zap.String("ifaceName", linkObj.Attrs().Name),
+			zap.Int("masterIndex", masterindex))
+		return NewLink{}, fmt.Errorf("iface is attached to a master")
+	}
 	result, err := Attach(kernelindex, link.XDPGenericMode, objs)
 	if err == nil {
 		replyinfo := NewLink{
