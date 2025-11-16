@@ -57,6 +57,11 @@ func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Li
 		}
 	}
 }
+func getCurrentLinks(readchan chan<- chan map[int]link.Link) map[int]link.Link {
+	respChan := make(chan map[int]link.Link)
+	readchan <- respChan
+	return <-respChan
+}
 
 // AttachExistingInterfaces attaches XDP program to all existing interfaces on the system at startup.
 func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) error {
