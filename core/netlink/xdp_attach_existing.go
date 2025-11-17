@@ -24,14 +24,10 @@ var (
 	})
 )
 
-// WriteChan ReadChan StopChan must be called and attached before StartLinkManager.
-var WriteChan chan struct {
+type WriteChanMessage struct {
 	NewLink NewLink
 	Err     error
 }
-var ReadChan chan chan map[int]link.Link
-var StopChan chan struct{}
-
 type NewLink struct {
 	Flag       link.XDPAttachFlags
 	LinkIndex  int
@@ -39,15 +35,21 @@ type NewLink struct {
 }
 
 // StartLinkManager must be started before AttachExistingInterfaces function.
-func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Link, stopChan chan struct{}, deletechan chan int, logger *zap.Logger) {
+func StartLinkManager(writeChan chan WriteChanMessage, readChan chan chan map[int]link.Link, stopChan chan struct{}, deletechan chan int, logger *zap.Logger) {
 	var (
 		// activeLinks is a map where the key is the interface index (ID) and the value is the XDP link object.
 		activeLinks = make(map[int]link.Link)
 	)
 	for {
 		select {
-		case newLink := <-writeChan:
-			activeLinks[newLink.LinkIndex] = newLink.LinkObject
+		case msg := <-writeChan:
+			if msg.Err != nil {
+				logger.Warn("received error",
+					zap.Int("index", msg.NewLink.LinkIndex),
+					zap.Error(msg.Err))
+			} else {
+				activeLinks[msg.NewLink.LinkIndex] = msg.NewLink.LinkObject
+			}
 		case req := <-readChan:
 			copyactiveLinks := make(map[int]link.Link, len(activeLinks))
 			for k, v := range activeLinks {
@@ -82,7 +84,7 @@ func getCurrentLinks(readchan chan<- chan map[int]link.Link) map[int]link.Link {
 }
 
 // AttachExistingInterfaces attaches XDP program to all existing interfaces on the system at startup.
-func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) error {
+func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, writeChan chan WriteChanMessage, logger *zap.Logger) error {
 	interfaces, err := FindInterfaces(logger)
 	if err != nil {
 		return err
@@ -102,7 +104,7 @@ func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) e
 				zap.String("ifaceName", iface.Name),
 				zap.Int("kernelIndex", kernelindex),
 				zap.Error(err))
-			attachReply(kernelindex, 0, nil, err)
+			attachReply(kernelindex, 0, nil, writeChan, err)
 			attachFailTotal.Inc()
 			continue
 		}
@@ -112,11 +114,11 @@ func AttachExistingInterfaces(objs *ebpfExport.IpsObjects, logger *zap.Logger) e
 				zap.String("ifaceName", iface.Name),
 				zap.Int("kernelIndex", kernelindex),
 				zap.Error(err))
-			attachReply(kernelindex, 0, nil, err)
+			attachReply(kernelindex, 0, nil, writeChan, err)
 			attachFailTotal.Inc()
 			continue
 		}
-		attachReply(kernelindex, attachinfo.Flag, attachinfo.LinkObject, nil)
+		attachReply(kernelindex, attachinfo.Flag, attachinfo.LinkObject, writeChan, nil)
 		attachSuccessTotal.Inc()
 	}
 	logger.Info("attach snapshot completed")
