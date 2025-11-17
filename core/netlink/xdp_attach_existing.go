@@ -19,6 +19,9 @@ var (
 	attachFailTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "xdp_attach_failed_total",
 	})
+	detachSuccessTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "xdp_deattach_total",
+	})
 )
 
 // WriteChan ReadChan StopChan must be called and attached before StartLinkManager.
@@ -36,7 +39,7 @@ type NewLink struct {
 }
 
 // StartLinkManager must be started before AttachExistingInterfaces function.
-func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Link, stopChan chan struct{}) {
+func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Link, stopChan chan struct{}, deletechan chan int, logger *zap.Logger) {
 	var (
 		// activeLinks is a map where the key is the interface index (ID) and the value is the XDP link object.
 		activeLinks = make(map[int]link.Link)
@@ -51,6 +54,21 @@ func StartLinkManager(writeChan chan NewLink, readChan chan chan map[int]link.Li
 				copyactiveLinks[k] = v
 			}
 			req <- copyactiveLinks
+		case deleteIndex := <-deletechan:
+			if receivedlink, exists := activeLinks[deleteIndex]; exists {
+				err := receivedlink.Close()
+				if err != nil {
+					logger.Warn("Failed to close XDP attach obj",
+						zap.Int("index", deleteIndex),
+						zap.Error(err))
+				}
+				delete(activeLinks, deleteIndex)
+				logger.Info("Deleted link from map", zap.Int("index", deleteIndex))
+				detachSuccessTotal.Inc()
+			} else {
+				logger.Debug("Received delete request from unknown interface",
+					zap.Int("index", deleteIndex))
+			}
 
 		case <-stopChan:
 			return

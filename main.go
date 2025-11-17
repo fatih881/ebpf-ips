@@ -44,13 +44,14 @@ func main() {
 	WriteChan := make(chan localnl.NewLink)
 	ReadChan := make(chan chan map[int]link.Link)
 	StopChan := make(chan struct{})
-	go localnl.StartLinkManager(WriteChan, ReadChan, StopChan)
+	DeleteChan := make(chan int)
+	go localnl.StartLinkManager(WriteChan, ReadChan, StopChan, DeleteChan, logger)
 	err = localnl.AttachExistingInterfaces(objs, logger)
 	if err != nil {
 		log.Fatalf("Attach Existing Interfaces returned err : %v", err)
 		return
 	}
-	go localnl.HandleKernelMessage(Updates, ReadChan, objs, logger)
+	go localnl.HandleKernelMessage(Updates, ReadChan, DeleteChan, objs, logger)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 	<-sigChan

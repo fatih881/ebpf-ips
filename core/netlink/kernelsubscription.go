@@ -14,7 +14,7 @@ func Subscribetokernel(updates chan netlink.LinkUpdate, done chan struct{}, logg
 		logger.Error("Error subscribing to kernel updates", zap.Error(err))
 	}
 }
-func HandleKernelMessage(updates chan netlink.LinkUpdate, readchan chan chan map[int]link.Link, objs *ebpfExport.IpsObjects, logger *zap.Logger) {
+func HandleKernelMessage(updates chan netlink.LinkUpdate, readchan chan chan map[int]link.Link, deletechan chan int, objs *ebpfExport.IpsObjects, logger *zap.Logger) {
 	for update := range updates {
 		switch update.Header.Type {
 		case unix.RTM_NEWLINK:
@@ -38,6 +38,10 @@ func HandleKernelMessage(updates chan netlink.LinkUpdate, readchan chan chan map
 			}
 			attachReply(result.LinkIndex, result.Flag, result.LinkObject, nil)
 			attachSuccessTotal.Inc()
+		case unix.RTM_DELLINK:
+			logger.Debug("Kernel reported interface deletion",
+				zap.Int("index", int(update.Index)))
+			deletechan <- int(update.Index)
 		}
 	}
 }
