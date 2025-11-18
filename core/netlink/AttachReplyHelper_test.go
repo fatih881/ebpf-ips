@@ -8,16 +8,11 @@ import (
 )
 
 func TestAttachReply(t *testing.T) {
-	oldchan := WriteChan
-	defer func() { WriteChan = oldchan }()
-
-	WriteChan = make(chan struct {
-		NewLink NewLink
-		Err     error
-	}, 1)
+	TestWriteChan := make(chan WriteChanMessage, 1)
+	defer close(TestWriteChan)
 	t.Run("success", func(t *testing.T) {
-		attachReply(1, link.XDPOffloadMode, nil, nil)
-		result := <-WriteChan
+		attachReply(1, link.XDPOffloadMode, nil, TestWriteChan, nil)
+		result := <-TestWriteChan
 		if result.Err != nil {
 			t.Errorf("Error should be nil, but got %v", result.Err)
 		}
@@ -29,8 +24,8 @@ func TestAttachReply(t *testing.T) {
 		}
 	})
 	t.Run("fail", func(t *testing.T) {
-		attachReply(1, 0, nil, errors.New("fail"))
-		result := <-WriteChan
+		attachReply(1, 0, nil, TestWriteChan, errors.New("fail"))
+		result := <-TestWriteChan
 		if result.Err == nil {
 			t.Errorf("Error should not be nil, but got %v", result.Err)
 		}
