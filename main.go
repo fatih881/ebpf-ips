@@ -2,12 +2,14 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/fatih881/ebpf-ips/core/ebpf"
 	localnl "github.com/fatih881/ebpf-ips/core/netlink"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
 )
@@ -45,6 +47,12 @@ func main() {
 	ReadChan := make(chan chan map[int]link.Link)
 	StopChan := make(chan struct{})
 	DeleteChan := make(chan int)
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		if err := http.ListenAndServe(":2112", nil); err != nil {
+			log.Fatalf("Can't stard /metrics, %v", err)
+		}
+	}()
 	go localnl.StartLinkManager(WriteChan, ReadChan, StopChan, DeleteChan, logger)
 	err = localnl.AttachExistingInterfaces(objs, WriteChan, logger)
 	if err != nil {
