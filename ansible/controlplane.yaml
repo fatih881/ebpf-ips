@@ -1,0 +1,38 @@
+- name: Configure Environment
+  hosts: servers
+  vars_files:
+    - vars.yaml
+  vars:
+    ansible_user: ansible
+    ansible_ssh_private_key_file: "{{ ssh_key_ansible }}"
+  become: yes
+  tasks:
+    - name: Implement hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+    - name: Configure System Timezone
+      community.general.timezone:
+        name: UTC
+    - name: Install Chrony For NTP
+      ansible.builtin.package:
+        name: chrony
+        state: present
+    - name: Start Chrony
+      ansible.builtin.service:
+        name: chrony
+        state: started
+        enabled: yes
+- name: Implement Observability
+  hosts: servers
+  vars_files:
+    - vars.yaml
+  vars:
+    ansible_user: ansible
+    ansible_ssh_private_key_file: "{{ ssh_key_ansible }}"
+  become: yes
+  tasks:
+    - name: Installing dependencies
+      ansible.builtin.package:
+        name: "{{ package_names[ansible_facts['os_family']]['git'] }}"
+        state: present
+        update_cache: yes

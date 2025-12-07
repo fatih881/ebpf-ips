@@ -1,0 +1,50 @@
+- name: ansible_user Setup and locking Root
+  hosts: servers
+  become: true
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: "{{ ssh_key_root }}"
+  vars_files:
+    - vars.yaml
+
+  tasks:
+    - name: Lock root password
+      ansible.builtin.user:
+        name: root
+        password_lock: true
+
+    - name: Disable root login via SSH
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: present
+        backup: yes
+      notify: Restart SSH
+
+    - name: Add ansible user
+      ansible.builtin.user:
+        name: ansible
+        state: present
+        shell: /bin/bash
+        groups: sudo
+        create_home: yes
+        password_lock: true
+
+    - name: Allow ansible passwordless sudo
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/ansible
+        content: "ansible ALL=(ALL) NOPASSWD: ALL\n"
+        mode: '0440'
+
+    - name: Install SSH key for ansible
+      authorized_key:
+        user: ansible
+        key: "{{ lookup('file', '~/.ssh/ansible.pub') }}"
+    - name: delete SSH authorized_keys
+      copy:
+        content: ""
+        dest: /root/.ssh/authorized_keys
+        owner: root
+        group: root
+        mode: "0600"
