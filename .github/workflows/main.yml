@@ -19,7 +19,7 @@ jobs:
       - name: Check Formatting
         run: test -z "$(gofmt -l .)"
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.6.0
           args: --timeout=3m ./...
