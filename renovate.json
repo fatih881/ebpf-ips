@@ -1,6 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
-  ]
+    "config:base",
+    "group:allNonMajor"
+  ],
+  "schedule": ["every weekend"],
+  "timezone": "Europe/Istanbul",
+  "prConcurrentLimit": 5,
+  "rangeStrategy": "bump"
 }
