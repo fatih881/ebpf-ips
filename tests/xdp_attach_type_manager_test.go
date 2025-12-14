@@ -1,20 +1,17 @@
-//go:build integration
-
 package tests
 
 import (
-	"net"
 	"testing"
 
-	"github.com/cilium/ebpf/link"
 	localebpf "github.com/fatih881/ebpf-ips/core/ebpf"
 	localnl "github.com/fatih881/ebpf-ips/core/netlink"
 	"github.com/mazen160/go-random"
 	"github.com/vishvananda/netlink"
+	"go.uber.org/zap"
 )
 
-func TestAttach(t *testing.T) {
-	//The sum of the generated and fixed values ​​cannot be greater than 15. (16 bytes normally, but \0 uses 1.)
+func TestXDPAttachTypeManager(t *testing.T) {
+	//The sum of the generated and fixed values ​cannot be greater than 15. (16 bytes normally, but \0 uses 1.)
 	// Source:https://elixir.bootlin.com/linux/v5.6/source/include/uapi/linux/if.h#L33
 	randominterfacenumber, err := random.String(11)
 	if err != nil {
@@ -43,20 +40,16 @@ func TestAttach(t *testing.T) {
 			t.Logf("failed to remove objects : %v", err)
 		}
 	})
-	info, err := net.InterfaceByName(dummyLinkName)
+	kernel, err := netlink.LinkByName(dummyLinkName)
 	if err != nil {
-		t.Fatalf("cannot get interface index : %v", err)
+		t.Fatalf("cannot lookup kernel index : %v", err)
 	}
-	kernelindex := info.Index
-	attachresult, err := localnl.Attach(kernelindex, link.XDPGenericMode, objs)
+	kernelindex := kernel.Attrs().Index
+	logger := zap.NewNop()
+	_, err = localnl.AttachTypeManager(kernelindex, kernel, objs, logger)
 	if err != nil {
 		t.Fatalf("function cannot attach program : %v", err)
 	}
-	t.Cleanup(func() {
-		if err := attachresult.Close(); err != nil {
-			t.Logf("failed to remove link : %v", err)
-		}
-	})
 	linkobj, err := netlink.LinkByName(dummyLinkName)
 	if err != nil {
 		t.Fatalf("error at query : %v", err)

@@ -2,16 +2,34 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
 
 	"github.com/cilium/ebpf/link"
-	"github.com/fatih881/ebpf-ips/core/netlink"
+	"github.com/fatih881/ebpf-ips/core/ebpf"
+	localnl "github.com/fatih881/ebpf-ips/core/netlink"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
 )
 
 var logger *zap.Logger
 
 func main() {
-	var err error
+	objs := &ebpf.IpsObjects{}
+	err := ebpf.LoadIpsObjects(objs, nil)
+	if err != nil {
+		log.Fatalf("Error loading objects: %v", err)
+		return
+	}
+	defer func(objs *ebpf.IpsObjects) {
+		err := objs.Close()
+		if err != nil {
+			log.Fatal("Error closing objects", zap.Error(err))
+			return
+		}
+	}(objs)
 	logger, err = zap.NewProduction()
 	if err != nil {
 		log.Fatalf("Can't create logger: %v", err)
@@ -22,8 +40,28 @@ func main() {
 			log.Fatalf("Can't stop logger: %v", err)
 		}
 	}(logger)
-	WriteChan := make(chan netlink.NewLink)
+	Updates := make(chan netlink.LinkUpdate, 1024)
+	done := make(chan struct{})
+	go localnl.Subscribetokernel(Updates, done, logger)
+	WriteChan := make(chan localnl.WriteChanMessage, 1024)
 	ReadChan := make(chan chan map[int]link.Link)
 	StopChan := make(chan struct{})
-	netlink.StartLinkManager(WriteChan, ReadChan, StopChan)
+	DeleteChan := make(chan int, 1024)
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		if err := http.ListenAndServe(":2112", nil); err != nil {
+			log.Fatalf("Can't stard /metrics, %v", err)
+		}
+	}()
+	go localnl.StartLinkManager(WriteChan, ReadChan, StopChan, DeleteChan, logger)
+	go localnl.HandleKernelMessage(WriteChan, Updates, ReadChan, DeleteChan, objs, logger)
+	err = localnl.AttachExistingInterfaces(objs, WriteChan, logger)
+	if err != nil {
+		log.Fatalf("Attach Existing Interfaces returned err : %v", err)
+		return
+	}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+	<-sigChan
+	close(done)
 }

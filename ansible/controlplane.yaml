@@ -1,0 +1,78 @@
+---
+- name: Configure Base System
+  hosts: all
+  become: true
+  vars_files:
+    - vars.yaml
+    - secrets.yml 
+  vars:
+    ansible_user: ansible
+    ansible_ssh_private_key_file: "{{ ssh_key_ansible }}"
+  roles:
+    - geerlingguy.pip
+    - geerlingguy.docker
+  tasks:
+    - name: Hostname 
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Set timezone to UTC 
+      community.general.timezone:
+        name: UTC
+
+    - name: Install NTP (Chrony)
+      ansible.builtin.package:
+        name: chrony
+        state: present
+
+    - name: enable and start NTP 
+      ansible.builtin.service:
+        name: "{{ 'chronyd' if ansible_os_family == 'RedHat' else 'chrony' }}"
+        state: started
+        enabled: true
+    - name: Make Directory (/opt/stack)
+      file:
+        path: /opt/stack
+        state: directory
+        mode: '0755'
+
+    - name: Pull Docker Compose 
+      template:
+        src: "{{ item }}"
+        dest: "/opt/stack/{{ item | basename | regex_replace('.j2$', '') }}"
+        mode: '0640'
+      loop:
+        - templates/docker-compose.yml.j2
+    - name: Create Environment Variables
+      copy:
+        dest: /opt/stack/.env
+        mode: '0600'
+        content: |
+          GITHUB_URL={{ github_repo_url }}
+          GITHUB_TOKEN={{ github_pat }}
+          RUNNER_NAME={{ inventory_hostname }}-runner
+          CLOUDFLARE_TUNNEL_TOKEN={{ cloudflare_tunnel_token }}
+          GRAFANA_DOMAIN={{ grafana_domain }}
+
+    - name: Pull Stack Containers (Runner, Prom, Grafana, Loki)
+      copy:
+        src: "{{ item }}/" 
+        dest: "/opt/stack/{{ item }}/"
+        mode: '0755'
+      loop:
+        - ci-runner
+        - prometheus
+        - loki
+        - grafana
+    - name: Cloudflare Tunnel Config 
+      template:
+        src: templates/cloudflared_config.yml.j2
+        dest: /opt/stack/cloudflared_config.yml
+        mode: '0644'
+    - name: Docker Compose Up
+      community.docker.docker_compose_v2:
+        project_src: /opt/stack
+        state: present
+        pull: always
+        remove_orphans: true
+        build: always

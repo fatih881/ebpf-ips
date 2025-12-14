@@ -1,4 +1,4 @@
-name: Basic CI
+name: Core Quality checks
 
 on:
   push:
@@ -25,8 +25,12 @@ jobs:
         with:
           version: v2.6.0
           args: --timeout=3m ./...
-      - name: Run Unit Tests
-        run: sudo go test ./...
+      - name: Run tests & Codecov
+        run: go test -v ./... -coverprofile=coverage.txt -covermode=atomic
+      - name: Govet
+        run: go vet -v ./...
+      - name: Send coverage to CodeCov
+        run: bash <(curl -s https://codecov.io/bash)
   deploy:
     needs: lint-and-test
     runs-on: ubuntu-latest

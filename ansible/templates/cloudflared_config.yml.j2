@@ -1,0 +1,5 @@
+tunnel: {{ cloudflare_tunnel_token | regex_replace('.*\\.', '') }}
+ingress:
+  - hostname: "{{ grafana_domain }}"
+    service: http://grafana:3000
+  - service: http_status:404
