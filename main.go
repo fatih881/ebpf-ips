@@ -40,13 +40,13 @@ func main() {
 			log.Fatalf("Can't stop logger: %v", err)
 		}
 	}(logger)
-	Updates := make(chan netlink.LinkUpdate)
+	Updates := make(chan netlink.LinkUpdate, 1024)
 	done := make(chan struct{})
 	go localnl.Subscribetokernel(Updates, done, logger)
-	WriteChan := make(chan localnl.WriteChanMessage)
+	WriteChan := make(chan localnl.WriteChanMessage, 1024)
 	ReadChan := make(chan chan map[int]link.Link)
 	StopChan := make(chan struct{})
-	DeleteChan := make(chan int)
+	DeleteChan := make(chan int, 1024)
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
 		if err := http.ListenAndServe(":2112", nil); err != nil {
@@ -54,12 +54,12 @@ func main() {
 		}
 	}()
 	go localnl.StartLinkManager(WriteChan, ReadChan, StopChan, DeleteChan, logger)
+	go localnl.HandleKernelMessage(WriteChan, Updates, ReadChan, DeleteChan, objs, logger)
 	err = localnl.AttachExistingInterfaces(objs, WriteChan, logger)
 	if err != nil {
 		log.Fatalf("Attach Existing Interfaces returned err : %v", err)
 		return
 	}
-	go localnl.HandleKernelMessage(WriteChan, Updates, ReadChan, DeleteChan, objs, logger)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 	<-sigChan
