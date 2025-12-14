@@ -20,7 +20,7 @@ var (
 		Name: "xdp_attach_failed_total",
 	})
 	detachSuccessTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "xdp_deattach_total",
+		Name: "xdp_detach_total",
 	})
 )
 
