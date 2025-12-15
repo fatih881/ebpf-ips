@@ -54,7 +54,7 @@
         name: ansible
         state: present
         shell: /bin/bash
-        groups: sudo
+        groups: "{{ 'wheel' if ansible_os_family == 'RedHat' else 'sudo' }}"
         create_home: true
 
     - name: Configure passwordless sudo for ansible user
@@ -92,5 +92,5 @@
   handlers:
     - name: Restart SSH
       ansible.builtin.service:
-        name: ssh
+        name: "{{ 'sshd' if ansible_os_family == 'RedHat' else 'ssh' }}"
         state: restarted
