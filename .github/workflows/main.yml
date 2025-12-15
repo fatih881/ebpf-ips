@@ -25,15 +25,21 @@ jobs:
         with:
           version: v2.6.0
           args: --timeout=3m ./...
-      - name: Run tests & Codecov
-        run: go test -v ./... -coverprofile=coverage.txt -covermode=atomic
-      - name: Govet
-        run: go vet -v ./...
+      - name: Run Unit Tests
+        run: go test -tags=unit -v ./... -coverprofile=coverage-unit.txt -covermode=atomic
+      - name: Run Integration Tests
+        run: sudo -E env "PATH=$PATH" go test -tags=integration -v ./... -coverprofile=coverage-integration.txt -covermode=atomic -coverpkg=./...
+      - name: Run Stress Tests
+        run: sudo -E env "PATH=$PATH" go test -tags=stress -v ./... -coverprofile=coverage-stress.txt -covermode=atomic -coverpkg=./...
       - name: Send coverage to CodeCov
-        run: bash <(curl -s https://codecov.io/bash)
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage-unit.txt,./coverage-integration.txt,./coverage-stress.txt
+          fail_ci_if_error: true
   deploy:
     needs: lint-and-test
     runs-on: ubuntu-latest
     steps:
-      - name: CI tests passed
-        run: echo "Linting and unit tests passed."
+      - name: CI Passed
+        run: echo "All checks passed."
