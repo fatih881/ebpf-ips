@@ -64,11 +64,6 @@
         - prometheus
         - loki
         - grafana
-    - name: Cloudflare Tunnel Config 
-      template:
-        src: templates/cloudflared_config.yml.j2
-        dest: /opt/stack/cloudflared_config.yml
-        mode: '0644'
     - name: Docker Compose Up
       community.docker.docker_compose_v2:
         project_src: /opt/stack
