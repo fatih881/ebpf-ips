@@ -36,6 +36,12 @@
         state: directory
         mode: '0755'
 
+    - name: Make Loki Data Directory
+      file:
+        path: /opt/stack/loki-data
+        state: directory
+        mode: '0777'
+
     - name: Pull Docker Compose 
       template:
         src: "{{ item }}"

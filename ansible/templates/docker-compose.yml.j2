@@ -2,6 +2,8 @@ services:
   github-runner:
     build:
       context: ./ci-runner
+      args:
+        GH_TOKEN: "${GITHUB_TOKEN}"
     privileged: true
     restart: always
     environment:
@@ -23,10 +25,12 @@ services:
   loki:
     image: grafana/loki:2.9.2
     restart: always
+    user: "root"
     ports:
       - "3100:3100"
     volumes:
       - ./loki:/etc/loki
+      - ./loki-data:/loki
     command:
       - '-config.file=/etc/loki/loki-config.yml'
 
