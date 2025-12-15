@@ -1,6 +1,7 @@
 # Distributed API-first Firewall for every edge
 [![CI](https://github.com/fatih881/ebpf-ips/actions/workflows/main.yml/badge.svg)](https://github.com/fatih881/ebpf-ips/actions/workflows/main.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fatih881/ebpf-ips)](https://goreportcard.com/report/github.com/fatih881/ebpf-ips)
+[![codecov](https://codecov.io/gh/fatih881/ebpf-ips/graph/badge.svg?token=IVF4HTGMWB)](https://codecov.io/gh/fatih881/ebpf-ips)
 > **Status:** Under Development,No Releases
 
 This repository hosts the source code for a low-latency, API-first distributed firewall solution designed for the linux kernel. By leveraging eBPF and XDP, this project aims to provide line-rate packet processing with minimal userspace intervention.
