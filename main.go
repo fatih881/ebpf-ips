@@ -7,8 +7,8 @@ import (
 	"os/signal"
 
 	"github.com/cilium/ebpf/link"
-	"github.com/fatih881/ebpf-ips/core/ebpf"
-	localnl "github.com/fatih881/ebpf-ips/core/netlink"
+	"github.com/fatih881/ebpf-fw/core/ebpf"
+	localnl "github.com/fatih881/ebpf-fw/core/netlink"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"

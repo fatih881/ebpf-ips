@@ -2,7 +2,7 @@ package netlink
 
 import (
 	"github.com/cilium/ebpf/link"
-	ebpf_export "github.com/fatih881/ebpf-ips/core/ebpf"
+	ebpf_export "github.com/fatih881/ebpf-fw/core/ebpf"
 )
 
 // The sole purpose of this function is to attach the interface data it receives to XDP.

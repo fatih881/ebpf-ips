@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fatih881/ebpf-ips/core/netlink"
+	"github.com/fatih881/ebpf-fw/core/netlink"
 	"go.uber.org/zap"
 )
 
