@@ -70,10 +70,19 @@
         - prometheus
         - loki
         - grafana
-    - name: Docker Compose Up
-      community.docker.docker_compose_v2:
-        project_src: /opt/stack
-        state: present
-        pull: always
-        remove_orphans: true
-        build: always
+    - name: Pull Docker Compose Images
+      command: docker compose pull
+      args:
+        chdir: /opt/stack
+
+    - name: Install Systemd Service To Start Containers On Boot
+      template:
+        src: templates/stack.service.j2
+        dest: /etc/systemd/system/stack.service
+        mode: '0644'
+
+    - name: Enable Stack Service
+      systemd:
+        name: stack
+        enabled: yes
+        daemon_reload: yes
