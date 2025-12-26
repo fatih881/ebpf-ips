@@ -16,8 +16,11 @@ import (
 	"testing"
 	"time"
 
+	"runtime"
+
 	localebpf "github.com/fatih881/ebpf-fw/core/ebpf"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 )
 
 const testBinary = "stressTest"
@@ -48,6 +51,41 @@ func attachStress(t *testing.T) {
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
 		t.Fatalf("failed to build program : %v", err)
+	}
+	runtime.LockOSThread()
+	t.Cleanup(func() {
+		runtime.UnlockOSThread()
+	})
+	origns, err := netns.Get()
+	if err != nil {
+		t.Fatalf("failed to get current netns: %v", err)
+	}
+	t.Cleanup(func() {
+		err := origns.Close()
+		if err != nil {
+			t.Logf("failed to close ns : %v", err)
+		}
+	})
+	newns, err := netns.New()
+	if err != nil {
+		t.Fatalf("failed to create new netns: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := newns.Close(); err != nil {
+			t.Logf("failed to close netns: %v", err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := netns.Set(origns); err != nil {
+			t.Logf("failed to restore original netns: %v", err)
+		}
+	})
+	lo, err := netlink.LinkByName("lo")
+	if err != nil {
+		t.Fatalf("failed to find lo in new ns: %v", err)
+	}
+	if err := netlink.LinkSetUp(lo); err != nil {
+		t.Fatalf("failed to set lo up: %v", err)
 	}
 	var dummyLinks []netlink.Link
 	var kernelIndexes []int
