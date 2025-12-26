@@ -103,7 +103,7 @@ func attachStress(t *testing.T) {
 		}
 		availableIfaceNumber++
 	}
-	if err := bulkCreateIfaces(t, 1, ifacesBeforeRun, &dummyLinks, &kernelIndexes); err != nil {
+	if err := bulkCreateIfaces(t, 1, ifacesBeforeRun, newns, &dummyLinks, &kernelIndexes); err != nil {
 		t.Fatalf("error creating ifaces : %v", err)
 	}
 	chmod := exec.Command("chmod", "+x", testBinary)
@@ -123,7 +123,7 @@ func attachStress(t *testing.T) {
 			t.Logf("failed to kill binary : %v", err)
 		}
 	})
-	if err := bulkCreateIfaces(t, ifacesBeforeRun+1, ifacesBeforeRun+ifacesAfterRun, &dummyLinks, &kernelIndexes); err != nil {
+	if err := bulkCreateIfaces(t, ifacesBeforeRun+1, ifacesBeforeRun+ifacesAfterRun, newns, &dummyLinks, &kernelIndexes); err != nil {
 		t.Fatalf("error creating ifaces : %v", err)
 	}
 	if err := bulkReadXdpProgs(&kernelIndexes); err != nil {
@@ -179,7 +179,7 @@ func attachStress(t *testing.T) {
 	if err := bulkReadXdpProgs(&kernelIndexes); err != nil {
 		t.Logf("error(kernel) XDP program could not be attached to all test interfaces: %v", err)
 	}
-	bulkLinkFlap(t, ifacesToDelete+1, ifacesToDelete+ifacesToLinkFlap, &dummyLinks, durationLinkFlap*time.Second)
+	bulkLinkFlap(t, ifacesToDelete+1, ifacesToDelete+ifacesToLinkFlap, newns, &dummyLinks, durationLinkFlap*time.Second)
 	if err := comparePrometheusResult(ifacesAfterRun+availableIfaceNumber, 0, ifacesToDelete, metrics); err != nil {
 		t.Logf("error comparing prometheus result : %v", err)
 	}
@@ -206,14 +206,19 @@ func attachStress(t *testing.T) {
 		t.Logf("error comparing prometheus result : %v", err)
 	}
 }
-func bulkCreateIfaces(t *testing.T, startIfaceNum int, endIfaceNum int, dummyLinks *[]netlink.Link, kernelIndexes *[]int) error {
+func bulkCreateIfaces(t *testing.T, startIfaceNum int, endIfaceNum int, ns netns.NsHandle, dummyLinks *[]netlink.Link, kernelIndexes *[]int) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	for i := startIfaceNum; i <= endIfaceNum; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
+			if err := netns.Set(ns); err != nil {
+				t.Logf("failed to set netns %v: %v", ns, err)
+				return
+			}
 			dummyLinkName := fmt.Sprintf("xdp-e2e-%03d", id)
 			dummyLink := &netlink.Dummy{
 				LinkAttrs: netlink.LinkAttrs{Name: dummyLinkName},
@@ -315,7 +320,7 @@ func waitForMetric(t *testing.T, url string, fetchedMetric string, expectedMetri
 	}
 	return fmt.Errorf("timeout: metric %s did not reach %d within %v. Last body: %s", fetchedMetric, expectedMetric, timeout, string(body))
 }
-func bulkLinkFlap(t *testing.T, startNum int, endNum int, dummyLinks *[]netlink.Link, duration time.Duration) {
+func bulkLinkFlap(t *testing.T, startNum int, endNum int, ns netns.NsHandle, dummyLinks *[]netlink.Link, duration time.Duration) {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
@@ -323,6 +328,12 @@ func bulkLinkFlap(t *testing.T, startNum int, endNum int, dummyLinks *[]netlink.
 		wg.Add(1)
 		go func(currentIndex int) {
 			defer wg.Done()
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
+			if err := netns.Set(ns); err != nil {
+				t.Logf("failed to set netns %v: %v", ns, err)
+				return
+			}
 			dummyLinkName := fmt.Sprintf("xdp-e2e-%03d", currentIndex)
 			var linkToFlap netlink.Link
 			for _, link := range *dummyLinks {
