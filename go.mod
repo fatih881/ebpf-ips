@@ -1,6 +1,6 @@
 module github.com/fatih881/ebpf-fw
 
-go 1.25.3
+go 1.25.5
 
 require (
 	github.com/cilium/ebpf v0.20.0
@@ -8,8 +8,8 @@ require (
 	github.com/mazen160/go-random v0.0.0-20210308102632-d2b501c85c03
 	github.com/prometheus/client_golang v1.23.2
 	github.com/vishvananda/netlink v1.3.1
-	go.uber.org/zap v1.27.0
-	golang.org/x/sys v0.37.0
+	go.uber.org/zap v1.27.1
+	golang.org/x/sys v0.39.0
 )
 
 require (
