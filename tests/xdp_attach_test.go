@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf/link"
-	localebpf "github.com/fatih881/ebpf-ips/core/ebpf"
-	localnl "github.com/fatih881/ebpf-ips/core/netlink"
+	localebpf "github.com/fatih881/ebpf-fw/core/ebpf"
+	localnl "github.com/fatih881/ebpf-fw/core/netlink"
 	"github.com/mazen160/go-random"
 	"github.com/vishvananda/netlink"
 )

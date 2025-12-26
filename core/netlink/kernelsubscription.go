@@ -2,7 +2,7 @@ package netlink
 
 import (
 	"github.com/cilium/ebpf/link"
-	ebpfExport "github.com/fatih881/ebpf-ips/core/ebpf"
+	ebpfExport "github.com/fatih881/ebpf-fw/core/ebpf"
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"

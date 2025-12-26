@@ -4,7 +4,7 @@ import (
 	"net"
 
 	"github.com/cilium/ebpf/link"
-	ebpfExport "github.com/fatih881/ebpf-ips/core/ebpf"
+	ebpfExport "github.com/fatih881/ebpf-fw/core/ebpf"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/vishvananda/netlink"

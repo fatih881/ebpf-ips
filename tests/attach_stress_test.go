@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	localebpf "github.com/fatih881/ebpf-ips/core/ebpf"
+	localebpf "github.com/fatih881/ebpf-fw/core/ebpf"
 	"github.com/vishvananda/netlink"
 )
 
